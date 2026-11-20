@@ -1,40 +1,52 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
 export class PatientDashboardPage {
+  private readonly chat: Locator;
+  private readonly messages: Locator;
+  private readonly conversationMessages: Locator;
   private readonly chatInput: Locator;
   private readonly patientBubble: Locator;
   private currentPatientBubble?: Locator;
 
   constructor(private readonly page: Page) {
+    this.chat = page.locator('app-ai-chat .ai-chat');
+    this.messages = this.chat.locator('.ai-chat__messages');
+    this.conversationMessages = this.messages.locator('article.ai-chat__message');
     this.chatInput = page.locator('#patient-message');
     this.patientBubble = page.locator('.ai-chat__message--patient .ai-chat__bubble');
   }
   async verifyDashboardLoaded(): Promise<void> {
-    await expect(this.page.getByRole('heading', { name: 'Health Navigator', exact: true })).toBeVisible();
+    await expect(this.chat).toBeVisible();
+    await expect(this.chat.getByRole('heading', { name: 'Health Navigator', exact: true })).toBeVisible();
+    await expect(this.messages).toBeVisible();
+    await expect(this.conversationMessages.last()).toBeVisible();
+    await expect(this.chat.locator('.ai-chat__composer')).toBeVisible();
     await expect(this.chatInput).toBeVisible();
+    await expect(this.chatInput).toBeEditable();
   }
   async enterChatMessage(message: string): Promise<void> {
-    await expect(this.chatInput).toBeVisible();
+    await expect(this.conversationMessages.last()).toBeVisible();
+    await expect(this.chatInput).toBeEditable();
     await this.chatInput.fill(message);
   }
   async sendChatMessage(message: string): Promise<void> {
     const previousBubbleCount = await this.patientBubble.count();
     await this.chatInput.locator('..').getByRole('button', { name: 'Send' }).click();
-    await expect(this.chatInput).toHaveValue('', { timeout: 30_000 });
-    await expect(this.patientBubble).toHaveCount(previousBubbleCount + 1, { timeout: 30_000 });
+    await expect(this.chatInput).toHaveValue('');
+    await expect(this.patientBubble).toHaveCount(previousBubbleCount + 1);
     this.currentPatientBubble = this.patientBubble.last();
     await expect(this.currentPatientBubble).toHaveText(message);
   }
   async verifyPatientMessage(message: string): Promise<void> {
     if (!this.currentPatientBubble) throw new Error('Send a patient message before verifying it.');
-    await expect(this.currentPatientBubble).toHaveText(message, { timeout: 30_000 });
+    await expect(this.currentPatientBubble).toHaveText(message);
   }
   async verifyAssistantResponse(message: string): Promise<void> {
     if (!this.currentPatientBubble) throw new Error('Send a patient message before verifying its assistant response.');
     const patientArticle = this.currentPatientBubble.locator('xpath=ancestor::article[1]');
     const responseArticle = patientArticle.locator('xpath=following-sibling::article[1]');
-    await expect(responseArticle).toBeVisible({ timeout: 60_000 });
-    await expect(responseArticle.locator('.ai-chat__bubble')).toHaveText(message, { timeout: 60_000 });
+    await expect(responseArticle).toBeVisible();
+    await expect(responseArticle.locator('.ai-chat__bubble')).toHaveText(message);
   }
 
   async verifyChatInputDisabled(): Promise<void> {
@@ -50,8 +62,8 @@ export class PatientDashboardPage {
       .or(this.page.getByRole('link', { name: /log\s*out|logout|sign\s*out/i }))
       .or(this.page.getByRole('menuitem', { name: /log\s*out|logout|sign\s*out/i }))
       .or(this.page.getByText(/^(log\s*out|logout|sign\s*out)$/i));
-    await expect(logoutControl.first()).toBeVisible({ timeout: 30_000 });
+    await expect(logoutControl.first()).toBeVisible();
     await logoutControl.first().click();
-    await expect(this.page.locator('#email')).toBeVisible({ timeout: 60_000 });
+    await expect(this.page.locator('#email')).toBeVisible();
   }
 }

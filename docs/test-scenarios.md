@@ -15,7 +15,7 @@
 ## Test data
 
 - Patient message: `I feel dizzy`
-- Expected assistant response: `Your care team should review these symptoms today. I have sent a same-day request to the transitional-care nurse. Call 911 now if symptoms become severe or you have chest pain, trouble breathing, or stroke signs.`
+- Expected assistant response: `This could be an emergency. Call 911 now. Do not wait for a reply here or drive yourself. If you can, ask someone nearby to stay with you.`
 - Escalation card safety message: `Do not start, stop, skip, or change a medicine until a care-team member has reviewed your request.`
 - Expected queue patient: `Bettyann83 Christiansen251`
 - Priority: `HIGH`

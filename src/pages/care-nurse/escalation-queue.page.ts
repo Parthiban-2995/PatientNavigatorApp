@@ -1,6 +1,9 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { escalation } from '../../constants/escalation.constants';
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const exactText = (value: string, flags = '') => new RegExp(`^\\s*${escapeRegExp(value)}\\s*$`, flags);
+
 export class EscalationQueuePage {
   private readonly rows: Locator;
   private readonly detailPanel: Locator;
@@ -18,30 +21,38 @@ export class EscalationQueuePage {
   async verifyNurseLoggedIn(name: string): Promise<void> {
     await expect(this.page.getByText(name, { exact: true }).first()).toBeVisible();
   }
-  async waitForQueueLoaded(): Promise<void> {
-    const panel = this.page.getByRole('region', { name: 'Escalations' });
-    await expect(panel).toBeVisible({ timeout: 60_000 });
-    await expect(this.rows.first()).toBeVisible({ timeout: 60_000 });
-    let previousCount = -1;
-    let stableSamples = 0;
-    await expect.poll(async () => {
-      const count = await this.rows.count();
-      stableSamples = count === previousCount ? stableSamples + 1 : 0;
-      previousCount = count;
-      return stableSamples;
-    }, { timeout: 60_000, message: 'Waiting for the escalation queue row count to settle after the list appears.' }).toBeGreaterThanOrEqual(4);
-  }
   async findPatientEscalation(patientName: string): Promise<void> {
+    const patientNamePattern = exactText(patientName);
+    const patientMessagePattern = exactText(escalation.patientMessage, 'i');
+    const priorityPattern = exactText(escalation.priority);
     const candidateRows = this.rows
-      .filter({ hasText: patientName })
-      .filter({ hasText: escalation.patientMessage });
-    await expect.poll(async () => candidateRows.count(), {
-      timeout: 60_000,
-      message: `Waiting for ${patientName}'s queue record with message: ${escalation.patientMessage}`,
-    }).toBeGreaterThan(0);
-    this.selectedRow = candidateRows.first();
-    await expect(this.selectedRow).toContainText(escalation.patientMessage);
-    await expect(this.selectedRow).toContainText(patientName);
+      .filter({ has: this.page.locator('strong', { hasText: patientNamePattern }) })
+      .filter({ has: this.page.locator('span:not(.priority)', { hasText: patientMessagePattern }) })
+      .filter({ has: this.page.locator('span.priority', { hasText: priorityPattern }) })
+      .filter({ has: this.page.locator('small', { hasText: /^OPEN\s*·/ }) });
+
+    await expect(candidateRows.first()).toBeVisible();
+    const displayedTimestamps = await candidateRows.locator('small').allTextContents();
+    let selectedIndex = -1;
+    let latestTimestamp = Number.NEGATIVE_INFINITY;
+
+    displayedTimestamps.forEach((statusText, index) => {
+      const timestamp = Date.parse(statusText.split('·').at(-1)?.trim() ?? '');
+      if (!Number.isNaN(timestamp) && timestamp >= latestTimestamp) {
+        selectedIndex = index;
+        latestTimestamp = timestamp;
+      }
+    });
+
+    if (selectedIndex < 0) {
+      throw new Error(`No timestamped OPEN escalation found for ${patientName}.`);
+    }
+
+    this.selectedRow = candidateRows.nth(selectedIndex);
+    await expect(this.selectedRow).toBeVisible();
+    await expect(this.selectedRow.locator('strong')).toHaveText(patientNamePattern);
+    await expect(this.selectedRow.locator('span:not(.priority)')).toHaveText(patientMessagePattern);
+    await expect(this.selectedRow.locator('span.priority')).toHaveText(priorityPattern);
   }
   async openEscalation(): Promise<void> {
     if (!this.selectedRow) throw new Error('No matching patient escalation was selected before opening the case.');
@@ -50,7 +61,7 @@ export class EscalationQueuePage {
   }
   async claimSelectedCase(patientName: string, nurseName: string): Promise<void> {
     await expect(this.detailPanel).toContainText(patientName);
-    await expect(this.detailPanel).toContainText(escalation.patientMessage);
+    await expect(this.detailPanel).toContainText(new RegExp(escapeRegExp(escalation.patientMessage), 'i'));
     await expect(this.detailPanel).toContainText(escalation.priority);
     const assignedTo = this.detailPanel.locator('dt').filter({ hasText: /^Assigned to$/ }).locator('xpath=following-sibling::dd[1]');
     await expect(assignedTo).toHaveText('Unassigned');

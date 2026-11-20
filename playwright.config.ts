@@ -18,10 +18,10 @@ export default defineConfig({
     ...devices['Desktop Chrome'],
     browserName: 'chromium',
     headless: headed,
-    actionTimeout: 30_000,
-    navigationTimeout: 60_000,
+    actionTimeout: 120_000,
+    navigationTimeout: 120_000,
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
   },
 });

@@ -14,8 +14,7 @@ export class LoginPage {
     await this.page.getByRole('button', { name: 'Sign in' }).click();
   }
   async verifySuccessfulLogin(): Promise<void> {
-    await expect(this.page.locator('#email')).toBeHidden({ timeout: 30_000 });
-    await expect(this.page).not.toHaveURL(/\/login(?:$|\?)/, { timeout: 30_000 });
+    await this.page.waitForURL((url) => !/\/login\/?$/.test(url.pathname));
   }
   async verifyLoginError(): Promise<void> {
     await expect(this.page.getByRole('alert')).toBeVisible();
