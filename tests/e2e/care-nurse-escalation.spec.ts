@@ -52,4 +52,13 @@ test('Care Nurse Escalation Handling Flow', async ({ createSession }) => {
     await pages.intervention.completeAndResolve();
     await pages.escalationQueue.verifyCaseResolved();
   });
+
+  await runStep('France571 logs back in and verifies the care-team message is persisted', async () => {
+    await pages.patientDashboard.logout();
+    await new AuthManager(pages.login).login(patientUser);
+
+    const dashboard = pages.patientDashboard;
+    await dashboard.waitForConversationLoaded();
+    await dashboard.verifyPersistedCareTeamMessage(escalation.careNote);
+  });
 });

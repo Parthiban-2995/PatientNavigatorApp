@@ -6,6 +6,7 @@ export class PatientDashboardPage {
   private readonly conversationMessages: Locator;
   private readonly chatInput: Locator;
   private readonly patientBubble: Locator;
+  private readonly careTeamBubble: Locator;
   private currentPatientBubble?: Locator;
 
   constructor(private readonly page: Page) {
@@ -14,6 +15,7 @@ export class PatientDashboardPage {
     this.conversationMessages = this.messages.locator('article.ai-chat__message');
     this.chatInput = page.locator('#patient-message');
     this.patientBubble = page.locator('.ai-chat__message--patient .ai-chat__bubble');
+    this.careTeamBubble = page.locator('.ai-chat__message--staff .ai-chat__bubble');
   }
   async verifyDashboardLoaded(): Promise<void> {
     await expect(this.chat).toBeVisible();
@@ -23,6 +25,9 @@ export class PatientDashboardPage {
     await expect(this.chat.locator('.ai-chat__composer')).toBeVisible();
     await expect(this.chatInput).toBeVisible();
     await expect(this.chatInput).toBeEditable();
+  }
+  async waitForConversationLoaded(): Promise<void> {
+    await this.conversationMessages.last().waitFor({ state: 'visible' });
   }
   async enterChatMessage(message: string): Promise<void> {
     await expect(this.conversationMessages.last()).toBeVisible();
@@ -40,6 +45,14 @@ export class PatientDashboardPage {
   async verifyPatientMessage(message: string): Promise<void> {
     if (!this.currentPatientBubble) throw new Error('Send a patient message before verifying it.');
     await expect(this.currentPatientBubble).toHaveText(message);
+  }
+  async verifyPersistedPatientMessage(message: string): Promise<void> {
+    const matchingMessages = this.patientBubble.filter({ hasText: message });
+    await expect(matchingMessages.last()).toHaveText(message);
+  }
+  async verifyPersistedCareTeamMessage(message: string): Promise<void> {
+    const matchingMessages = this.careTeamBubble.filter({ hasText: message });
+    await expect(matchingMessages.last()).toHaveText(message);
   }
   async verifyAssistantResponse(message: string): Promise<void> {
     if (!this.currentPatientBubble) throw new Error('Send a patient message before verifying its assistant response.');
