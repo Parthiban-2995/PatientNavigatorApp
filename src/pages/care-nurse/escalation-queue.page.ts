@@ -1,8 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { escalation } from '../../constants/escalation.constants';
-
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const exactText = (value: string, flags = '') => new RegExp(`^\\s*${escapeRegExp(value)}\\s*$`, flags);
+import { createExactTextMatcher, escapeRegExp } from '../../utilities/text-matching.util';
 
 export class EscalationQueuePage {
   private readonly rows: Locator;
@@ -22,9 +20,9 @@ export class EscalationQueuePage {
     await expect(this.page.getByText(name, { exact: true }).first()).toBeVisible();
   }
   async findPatientEscalation(patientName: string): Promise<void> {
-    const patientNamePattern = exactText(patientName);
-    const patientMessagePattern = exactText(escalation.patientMessage, 'i');
-    const priorityPattern = exactText(escalation.priority);
+    const patientNamePattern = createExactTextMatcher(patientName);
+    const patientMessagePattern = createExactTextMatcher(escalation.patientMessage, 'i');
+    const priorityPattern = createExactTextMatcher(escalation.priority);
     const candidateRows = this.rows
       .filter({ has: this.page.locator('strong', { hasText: patientNamePattern }) })
       .filter({ has: this.page.locator('span:not(.priority)', { hasText: patientMessagePattern }) })
