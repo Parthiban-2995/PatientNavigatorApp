@@ -30,7 +30,6 @@ test('Care Nurse Escalation Handling Flow', async ({ createAuthenticatedSession 
     const queue = nursePages.escalationQueue;
     await queue.verifyNurseLoggedIn(careNurseUser.name);
     await queue.navigateToEscalationQueue();
-    await queue.selectActiveQueue();
     await queue.openMatchingEscalation(patientUser.name, scenario.patientMessage, scenario.priority);
 
     await runStep('Verify the case is unassigned, claim it, and confirm assignment', async () => {

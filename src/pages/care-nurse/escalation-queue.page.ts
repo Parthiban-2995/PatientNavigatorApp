@@ -53,7 +53,7 @@ export class EscalationQueuePage {
     await expect(selectedRow.locator('span:not(.priority)')).toHaveText(patientMessagePattern);
     await expect(selectedRow.locator('span.priority')).toHaveText(priorityPattern);
     await selectedRow.click();
-    await expect(this.detailPanel).toBeVisible();
+    await expect(this.detailPanel).toContainText(patientName);
   }
   async claimSelectedCase(
     patientName: string,

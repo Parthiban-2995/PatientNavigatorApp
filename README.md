@@ -10,10 +10,10 @@ Playwright and TypeScript UI automation for patient and transitional care nurse 
 
 ## Run and reports
 
-- `npm run test:e2e` runs the workflows with one worker using the browser mode configured in `playwright.config.ts`.
-- `npm run test:e2e:headed` runs it with a visible Chromium window.
+- `npm run test:e2e` clears previous Allure output, then runs the workflows with one worker using the browser mode configured in `playwright.config.ts`.
+- `npm run test:e2e:headed` clears previous Allure output, then runs with a visible Chromium window.
 - `npm run typecheck` checks TypeScript; `npm run lint` runs ESLint.
-- Playwright HTML output is written to `playwright-report/`; Allure results go to `allure-results/`. Generate/open Allure using `npm run allure:generate` and `npm run allure:open`.
+- Playwright HTML output is written to `playwright-report/`; Allure results go to `allure-results/`. Generate/open Allure using `npm run allure:generate` and `npm run allure:open`. Both reports represent the latest npm-driven test execution.
 
 The escalation scenario creates and resolves a real record. Queue selection matches the patient, message, priority, and open status, then chooses the latest parseable timestamp without assuming a fixed queue size. Because the application is currently a POC and can respond slowly, test, assertion, action, and navigation timeouts are intentionally set to 120 seconds.
 

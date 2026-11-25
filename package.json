@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "allure:clean": "node -e \"const fs=require('fs'); for (const path of ['allure-results','allure-report']) fs.rmSync(path, { recursive: true, force: true })\"",
+    "pretest:e2e": "npm run allure:clean",
     "test:e2e": "playwright test",
+    "pretest:e2e:headed": "npm run allure:clean",
     "test:e2e:headed": "playwright test --headed",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
