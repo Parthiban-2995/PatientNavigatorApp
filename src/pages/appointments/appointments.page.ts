@@ -20,11 +20,18 @@ export class AppointmentsPage {
     await this.page.getByRole('button', { name: 'Book appointment', exact: true }).click();
     const dialog = this.page.getByRole('dialog', { name: 'Book an appointment' });
     await expect(dialog).toBeVisible();
+    const appointmentDate = this.getCurrentDate();
     await dialog.getByRole('combobox', { name: 'Appointment type', exact: true }).selectOption('ROUTINE');
-    await dialog.locator('input[name="appointment_date"]').fill(this.getTomorrow());
+    await dialog.locator('input[name="appointment_date"]').fill(appointmentDate);
     await dialog.getByRole('combobox', { name: 'Duration', exact: true }).selectOption({ label: '30 minutes' });
     await dialog.getByRole('combobox', { name: 'Channel', exact: true }).selectOption({ label: 'In person' });
-    await dialog.locator('button.slot-option').first().click();
+    const firstAvailableSlot = dialog.locator('button.slot-option').first();
+    const noAvailability = dialog.getByText('No times are available for this date and duration.', { exact: true });
+    await expect(firstAvailableSlot.or(noAvailability)).toBeVisible();
+    if (await noAvailability.isVisible()) {
+      throw new Error(`The application returned no appointment availability for ${appointmentDate} and 30 minutes.`);
+    }
+    await firstAvailableSlot.click();
     await dialog.getByLabel(/Reason/).fill(reason);
     await dialog.getByRole('button', { name: 'Book appointment', exact: true }).click();
     await expect(dialog).toBeHidden();
@@ -79,10 +86,9 @@ export class AppointmentsPage {
     }).last();
   }
 
-  private getTomorrow(): string {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
+  private getCurrentDate(): string {
+    const today = new Date();
     const pad = (value: number) => String(value).padStart(2, '0');
-    return `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+    return `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
   }
 }

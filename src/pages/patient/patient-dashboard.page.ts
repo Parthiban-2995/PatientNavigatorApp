@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { createExactTextMatcher } from '../../utilities/text-matching.util';
 
 export class PatientDashboardPage {
   private readonly chat: Locator;
@@ -7,7 +8,6 @@ export class PatientDashboardPage {
   private readonly chatInput: Locator;
   private readonly patientBubble: Locator;
   private readonly careTeamBubble: Locator;
-  private currentPatientBubble?: Locator;
 
   constructor(private readonly page: Page) {
     this.chat = page.locator('app-ai-chat .ai-chat');
@@ -35,16 +35,16 @@ export class PatientDashboardPage {
     await this.chatInput.fill(message);
   }
   async sendChatMessage(message: string): Promise<void> {
-    const previousBubbleCount = await this.patientBubble.count();
+    const matchingMessages = this.patientBubble.filter({ hasText: createExactTextMatcher(message) });
+    const previousMatchCount = await matchingMessages.count();
     await this.chatInput.locator('..').getByRole('button', { name: 'Send' }).click();
     await expect(this.chatInput).toHaveValue('');
-    await expect(this.patientBubble).toHaveCount(previousBubbleCount + 1);
-    this.currentPatientBubble = this.patientBubble.last();
-    await expect(this.currentPatientBubble).toHaveText(message);
+    await expect(matchingMessages).toHaveCount(previousMatchCount + 1);
+    await expect(matchingMessages.last()).toHaveText(message);
   }
   async verifyPatientMessage(message: string): Promise<void> {
-    if (!this.currentPatientBubble) throw new Error('Send a patient message before verifying it.');
-    await expect(this.currentPatientBubble).toHaveText(message);
+    const matchingMessages = this.patientBubble.filter({ hasText: createExactTextMatcher(message) });
+    await expect(matchingMessages.last()).toHaveText(message);
   }
   async verifyPersistedPatientMessage(message: string): Promise<void> {
     const matchingMessages = this.patientBubble.filter({ hasText: message });
@@ -54,12 +54,14 @@ export class PatientDashboardPage {
     const matchingMessages = this.careTeamBubble.filter({ hasText: message });
     await expect(matchingMessages.last()).toHaveText(message);
   }
-  async verifyAssistantResponse(message: string): Promise<void> {
-    if (!this.currentPatientBubble) throw new Error('Send a patient message before verifying its assistant response.');
-    const patientArticle = this.currentPatientBubble.locator('xpath=ancestor::article[1]');
+  async verifyAssistantResponse(patientMessageText: string, assistantResponseText: string): Promise<void> {
+    const patientMessage = this.patientBubble
+      .filter({ hasText: createExactTextMatcher(patientMessageText) })
+      .last();
+    const patientArticle = patientMessage.locator('xpath=ancestor::article[1]');
     const responseArticle = patientArticle.locator('xpath=following-sibling::article[1]');
     await expect(responseArticle).toBeVisible();
-    await expect(responseArticle.locator('.ai-chat__bubble')).toHaveText(message);
+    await expect(responseArticle.locator('.ai-chat__bubble')).toHaveText(assistantResponseText);
   }
 
   async verifyChatInputDisabled(): Promise<void> {

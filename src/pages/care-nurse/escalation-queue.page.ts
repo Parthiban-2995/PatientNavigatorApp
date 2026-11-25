@@ -1,11 +1,9 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { escalation } from '../../constants/escalation.constants';
 import { createExactTextMatcher, escapeRegExp } from '../../utilities/text-matching.util';
 
 export class EscalationQueuePage {
   private readonly rows: Locator;
   private readonly detailPanel: Locator;
-  private selectedRow?: Locator;
   constructor(private readonly page: Page) {
     this.rows = page.getByRole('region', { name: 'Escalations' }).locator('button.case-row');
     this.detailPanel = page.locator('.detail-panel');
@@ -19,10 +17,10 @@ export class EscalationQueuePage {
   async verifyNurseLoggedIn(name: string): Promise<void> {
     await expect(this.page.getByText(name, { exact: true }).first()).toBeVisible();
   }
-  async findPatientEscalation(patientName: string): Promise<void> {
+  async openMatchingEscalation(patientName: string, patientMessage: string, priority: string): Promise<void> {
     const patientNamePattern = createExactTextMatcher(patientName);
-    const patientMessagePattern = createExactTextMatcher(escalation.patientMessage, 'i');
-    const priorityPattern = createExactTextMatcher(escalation.priority);
+    const patientMessagePattern = createExactTextMatcher(patientMessage, 'i');
+    const priorityPattern = createExactTextMatcher(priority);
     const candidateRows = this.rows
       .filter({ has: this.page.locator('strong', { hasText: patientNamePattern }) })
       .filter({ has: this.page.locator('span:not(.priority)', { hasText: patientMessagePattern }) })
@@ -43,24 +41,29 @@ export class EscalationQueuePage {
     });
 
     if (selectedIndex < 0) {
-      throw new Error(`No timestamped OPEN escalation found for ${patientName}.`);
+      const observedRows = await candidateRows.allTextContents();
+      throw new Error(
+        `No timestamped OPEN escalation found for ${patientName}. Candidates: ${JSON.stringify(observedRows)}`,
+      );
     }
 
-    this.selectedRow = candidateRows.nth(selectedIndex);
-    await expect(this.selectedRow).toBeVisible();
-    await expect(this.selectedRow.locator('strong')).toHaveText(patientNamePattern);
-    await expect(this.selectedRow.locator('span:not(.priority)')).toHaveText(patientMessagePattern);
-    await expect(this.selectedRow.locator('span.priority')).toHaveText(priorityPattern);
-  }
-  async openEscalation(): Promise<void> {
-    if (!this.selectedRow) throw new Error('No matching patient escalation was selected before opening the case.');
-    await this.selectedRow.click();
-    await expect(this.detailPanel).toBeVisible();
-  }
-  async claimSelectedCase(patientName: string, nurseName: string): Promise<void> {
+    const selectedRow = candidateRows.nth(selectedIndex);
+    await expect(selectedRow).toBeVisible();
+    await expect(selectedRow.locator('strong')).toHaveText(patientNamePattern);
+    await expect(selectedRow.locator('span:not(.priority)')).toHaveText(patientMessagePattern);
+    await expect(selectedRow.locator('span.priority')).toHaveText(priorityPattern);
+    await selectedRow.click();
     await expect(this.detailPanel).toContainText(patientName);
-    await expect(this.detailPanel).toContainText(new RegExp(escapeRegExp(escalation.patientMessage), 'i'));
-    await expect(this.detailPanel).toContainText(escalation.priority);
+  }
+  async claimSelectedCase(
+    patientName: string,
+    nurseName: string,
+    patientMessage: string,
+    priority: string,
+  ): Promise<void> {
+    await expect(this.detailPanel).toContainText(patientName);
+    await expect(this.detailPanel).toContainText(new RegExp(escapeRegExp(patientMessage), 'i'));
+    await expect(this.detailPanel).toContainText(priority);
     const assignedTo = this.detailPanel.locator('dt').filter({ hasText: /^Assigned to$/ }).locator('xpath=following-sibling::dd[1]');
     await expect(assignedTo).toHaveText('Unassigned');
     await this.detailPanel.getByRole('button', { name: /Claim case/i }).click();

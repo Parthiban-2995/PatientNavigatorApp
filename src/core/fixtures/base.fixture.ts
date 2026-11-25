@@ -1,31 +1,46 @@
 import { test as base, expect, type BrowserContext, type Page } from '@playwright/test';
+import { AuthManager } from '../../authentication/auth.manager';
 import { PageManager } from '../../pages/manager/page.manager';
+import type { AppUser } from '../../users/user.types';
 
 type Session = { context: BrowserContext; page: Page; pages: PageManager; close: () => Promise<void> };
-type Fixtures = { createSession: () => Promise<Session> };
+type Fixtures = {
+  createSession: () => Promise<Session>;
+  createAuthenticatedSession: (user: AppUser) => Promise<Session>;
+};
+
+type SessionFactory = () => Promise<Session>;
 
 export const test = base.extend<Fixtures>({
   createSession: async ({ browser }, use) => {
-    const contexts: BrowserContext[] = [];
-    try {
-      await use(async () => {
+    const contexts = new Set<BrowserContext>();
+    const createSession: SessionFactory = async () => {
         const context = await browser.newContext();
-        contexts.push(context);
+        contexts.add(context);
         const page = await context.newPage();
         return {
           context,
           page,
           pages: new PageManager(page),
           close: async () => {
-            const index = contexts.indexOf(context);
-            if (index >= 0) contexts.splice(index, 1);
+            contexts.delete(context);
             await context.close();
           },
         };
-      });
+    };
+
+    try {
+      await use(createSession);
     } finally {
-      await Promise.all(contexts.map((context) => context.close()));
+      await Promise.all([...contexts].map((context) => context.close()));
     }
+  },
+  createAuthenticatedSession: async ({ createSession }, use) => {
+    await use(async (user) => {
+      const session = await createSession();
+      await new AuthManager(session.pages.login).login(user);
+      return session;
+    });
   },
 });
 
