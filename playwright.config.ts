@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const headed = process.env.HEADED === 'true';
+
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -17,7 +17,7 @@ export default defineConfig({
   use: {
     ...devices['Desktop Chrome'],
     browserName: 'chromium',
-    headless: headed,
+    headless: false,
     actionTimeout: 120_000,
     navigationTimeout: 120_000,
     screenshot: 'only-on-failure',
